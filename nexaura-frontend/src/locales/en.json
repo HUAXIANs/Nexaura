@@ -1,0 +1,84 @@
+{
+  "welcome": "Welcome to NexAura",
+  "app": {
+    "tagline": "Intelligent Document Creation Assistant"
+  },
+  "nav": {
+    "home": "Home",
+    "login": "Login",
+    "dashboard": "Dashboard"
+  },
+  "hero": {
+    "title": "Welcome to NEXAURA",
+    "subtitle": "An intelligent document creation assistant based on a domestic computing power platform",
+    "description": "Enter a topic to generate exquisite graphic notes in Xiaohongshu style with one click",
+    "button_create": "Start Creating",
+    "button_learn_more": "Learn More"
+  },
+  "features": {
+    "title": "Core Features",
+    "card1_title": "🎨 Smart Creation",
+    "card1_desc": "Intelligently generate high-quality content based on the iFlytek Spark model.",
+    "card2_title": "📱 Multi-platform Adaptation",
+    "card2_desc": "Supports styles for various platforms like Xiaohongshu and WeChat Official Accounts.",
+    "card3_title": "⚡ One-click Generation",
+    "card3_desc": "Enter a topic to instantly get complete graphic notes.",
+    "card4_title": "🔒 Secure & Reliable",
+    "card4_desc": "Based on a domestic computing power platform, ensuring data security."
+  },
+  "login": {
+    "title": "Login to NEXAURA",
+    "email": "Email",
+    "password": "Password",
+    "button_login": "Login",
+    "prompt_register": "Don't have an account?",
+    "button_register_now": "Register Now"
+  },
+  "register": {
+    "title": "Create a New Account",
+    "username": "Username",
+    "email_placeholder": "Please enter your email",
+    "button_cancel": "Cancel",
+    "button_register": "Register"
+  },
+  "dashboard": {
+    "title": "Creation Dashboard",
+    "welcome": "Welcome back! Start your intelligent creation journey.",
+    "my_projects": "My Projects",
+    "button_new_project": "+ New Project",
+    "empty_state_message": "You haven't created any projects yet",
+    "button_create_first_project": "Create your first project",
+    "projects": {
+      "p1": {
+        "title": "Coffee Shop Exploration Series",
+        "description": "Sharing experiences from various specialty coffee shops in Beijing"
+      }
+    }
+  },
+  "project_card": {
+    "status_ongoing": "Ongoing"
+  },
+  "creation": {
+    "title_suffix": "Creation Zone",
+    "topic": "Creation Topic",
+    "topic_placeholder": "Please enter the topic you want to create, e.g., 'Store Rec: The most worthy coffee shop in Beijing'",
+    "target_platform": "Target Platform",
+    "style": "Content Style",
+    "style_option_explore": "Exploration & Review Style",
+    "button_generate": "Generate with One Click",
+    "result_title": "Generated Result",
+    "image_suggestions_title": "Recommended Image Descriptions:",
+    "button_edit_content": "Edit Content",
+    "button_save_project": "Save Project",
+    "button_export_content": "Export Content"
+  },
+  "create_project_modal": {
+    "title": "New Creation Project",
+    "project_title_label": "Project Title",
+    "project_title_placeholder": "e.g., Coffee Shop Exploration Series",
+    "project_desc_label": "Project Description",
+    "project_desc_placeholder": "Briefly describe the content and goals of this project",
+    "button_cancel": "Cancel",
+    "button_create": "Create Project"
+  }
+} 

@@ -1,0 +1,84 @@
+{
+  "welcome": "欢迎使用 NexAura",
+  "app": {
+    "tagline": "智能文档创作平台"
+  },
+  "nav": {
+    "home": "首页",
+    "login": "登录",
+    "dashboard": "工作台"
+  },
+  "hero": {
+    "title": "欢迎使用 NEXAURA",
+    "subtitle": "基于国产算力平台的智能文档创作助手",
+    "description": "输入主题，一键生成小红书风格的精美图文笔记",
+    "button_create": "开始创作",
+    "button_learn_more": "了解更多"
+  },
+  "features": {
+    "title": "核心功能",
+    "card1_title": "🎨 智能创作",
+    "card1_desc": "基于讯飞星火大模型，智能生成高质量内容",
+    "card2_title": "📱 多平台适配",
+    "card2_desc": "支持小红书、微信公众号等多种平台风格",
+    "card3_title": "⚡ 一键生成",
+    "card3_desc": "输入主题，瞬间获得完整的图文笔记",
+    "card4_title": "🔒 安全可靠",
+    "card4_desc": "基于国产算力平台，数据安全有保障"
+  },
+  "login": {
+    "title": "登录 NEXAURA",
+    "email": "邮箱",
+    "password": "密码",
+    "button_login": "登录",
+    "prompt_register": "还没有帐号？",
+    "button_register_now": "立即注册"
+  },
+  "register": {
+    "title": "注册新帐号",
+    "username": "用户名",
+    "email_placeholder": "请输入邮箱",
+    "button_cancel": "取消",
+    "button_register": "注册"
+  },
+  "dashboard": {
+    "title": "创作工作台",
+    "welcome": "欢迎回来！开始您的智能创作之旅",
+    "my_projects": "我的项目",
+    "button_new_project": "+ 新建项目",
+    "empty_state_message": "您还没有创建任何项目",
+    "button_create_first_project": "创建第一个项目",
+    "projects": {
+      "p1": {
+        "title": "咖啡厅探店系列",
+        "description": "分享北京各个特色咖啡厅的体验"
+      }
+    }
+  },
+  "project_card": {
+    "status_ongoing": "进行中"
+  },
+  "creation": {
+    "title_suffix": "创作区",
+    "topic": "创作主题",
+    "topic_placeholder": "请输入您想要创作的主题，例如：「探店推荐：北京最值得去的咖啡厅」",
+    "target_platform": "目标平台",
+    "style": "内容风格",
+    "style_option_explore": "探店种草风",
+    "button_generate": "一键生成",
+    "result_title": "生成结果",
+    "image_suggestions_title": "推荐图片描述：",
+    "button_edit_content": "编辑内容",
+    "button_save_project": "保存项目",
+    "button_export_content": "导出内容"
+  },
+  "create_project_modal": {
+    "title": "新建创作项目",
+    "project_title_label": "项目标题",
+    "project_title_placeholder": "例如：咖啡厅探店系列",
+    "project_desc_label": "项目描述",
+    "project_desc_placeholder": "简单描述这个项目的内容和目标",
+    "button_cancel": "取消",
+    "button_create": "创建项目"
+  }
+} 
