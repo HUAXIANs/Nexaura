@@ -57,7 +57,7 @@ nexaura-project/
 
 ```bash
 git clone <your-repository-url>
-cd nexaura-project
+cd Nexaura
 ```
 
 ### 2. 后端设置
