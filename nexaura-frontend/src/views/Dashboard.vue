@@ -19,8 +19,8 @@
           class="project-card"
           @click="selectProject(project)"
         >
-          <h3>{{ $t(project.title) }}</h3>
-          <p>{{ $t(project.description) }}</p>
+          <h3>{{ isI18nKey(project.title) ? $t(project.title) : project.title }}</h3>
+          <p>{{ isI18nKey(project.description) ? $t(project.description) : project.description }}</p>
           <div class="card-footer">
             <span>{{ formatDate(project.createdAt) }}</span>
             <span class="status" :class="project.status">{{ $t('project_card.status_' + project.status) }}</span>
@@ -39,7 +39,7 @@
     <!-- 創作區域 -->
     <div v-if="selectedProject" class="creation-section">
       <div class="creation-card">
-        <h2>{{ $t(selectedProject.title) }} - {{ $t('creation.title_suffix') }}</h2>
+        <h2>{{ isI18nKey(selectedProject.title) ? $t(selectedProject.title) : selectedProject.title }} - {{ $t('creation.title_suffix') }}</h2>
         <form @submit.prevent="handleGenerate">
           <div class="form-group">
             <label for="creation-topic">{{ $t('creation.topic') }}</label>
@@ -147,6 +147,9 @@
 </template>
 
 <script>
+import axios from 'axios';
+import { API_ENDPOINTS, AUTH } from '../config';
+
 export default {
   name: 'Dashboard',
   data() {
@@ -173,10 +176,22 @@ export default {
       isGenerating: false
     }
   },
+  mounted() {
+    // 组件挂载时，自动选择第一个项目
+    if (this.projects.length > 0 && !this.selectedProject) {
+      console.log('自动选择第一个项目');
+      this.selectProject(this.projects[0]);
+    }
+  },
   methods: {
+    isI18nKey(text) {
+      return typeof text === 'string' && text.includes('.');
+    },
+    
     selectProject(project) {
-      this.selectedProject = project
-      this.generatedContent = null
+      console.log('选择项目:', project);
+      this.selectedProject = project;
+      this.generatedContent = null;
     },
     
     createProject() {
@@ -185,14 +200,15 @@ export default {
         title: this.newProject.title,
         description: this.newProject.description,
         createdAt: new Date(),
-        status: '新建'
+        status: 'ongoing'  // 使用英文状态，与i18n保持一致
       }
       
-      this.projects.push(project)
-      this.selectedProject = project
-      this.showCreateProject = false
+      console.log('创建新项目:', project);
+      this.projects.push(project);
+      this.selectedProject = project;
+      this.showCreateProject = false;
       
-      // 清空表單
+      // 清空表单
       this.newProject = {
         title: '',
         description: ''
@@ -200,47 +216,59 @@ export default {
     },
     
     async handleGenerate() {
-      this.isGenerating = true
-      
+      this.isGenerating = true;
+      this.generatedContent = null; // 开始生成时，清空之前的结果
+
+      const requestBody = {
+        topic: this.creationTopic,
+        platform: this.targetPlatform,
+        style: this.contentStyle
+      };
+
       try {
-        // TODO: 調用後端 API 生成內容
-        console.log('生成內容請求:', { topic: this.creationTopic, platform: this.targetPlatform, style: this.contentStyle })
+        // 从localStorage获取token
+        const token = localStorage.getItem(AUTH.TOKEN_KEY);
         
-        // 模擬 API 調用
-        this.generatedContent = await new Promise(resolve => setTimeout(() => {
-          // 模擬生成的內容
-          this.generatedContent = {
-            title: '📍北京必打卡咖啡厅｜隐秘在胡同里的宝藏店！',
-            content: `今天要和大家分享一家超级棒的咖啡厅！🥰<br><br>
-            
-📍 店名：胡同咖啡<br>
-📍 地址：东城区南锣鼓巷附近<br><br>
-
-✨ 环境：<br>
-店面不大但很温馨，复古的装修风格配上暖黄色的灯光，特别有氛围感！窗边的位置可以看到胡同里的日常生活，很有北京味道～<br><br>
-
-☕ 推薦：<br>
-• 招牌拿铁 - 奶泡密，咖啡香浓<br>
-• 手工饼干 - 现烤的，配咖啡绝了！<br>
-• 季节限定饮品 - 每个月都有惊喜<br><br>
-
-💰 人均：35-50元<br>
-🕐 营业时间：9:00-21:00<br><br>
-
-真的是一家让人想要常来的店！姐妹们快去打卡吧～`,
-            tags: ['北京咖啡', '胡同探店', '小众咖啡厅', '打卡圣地', '周末去处'],
-            imageDescriptions: [
-              '咖啡厅外觀：古色古香的胡同背景下 的小店门面',
-              '内部环境：温馨的座位区，暖黄色灯光营造的氛围',
-              '招牌咖啡：精美的拿铁咖啡，配上手工饼干的摆盘'
-            ]
+        // 使用配置文件中的API地址
+        const apiUrl = API_ENDPOINTS.GENERATE_CONTENT;
+        
+        // 发起真实的API请求
+        const response = await axios.post(apiUrl, requestBody, {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+            'Content-Type': 'application/json'
           }
-        }, 1500))
+        });
+
+        // 将返回的数据赋值给generatedContent
+        this.generatedContent = response.data;
+        
+        // 处理内容显示
+        if (this.generatedContent && this.generatedContent.content) {
+          // 将换行符转换为<br>标签，以便正确显示
+          this.generatedContent.content = this.generatedContent.content.replace(/\n\n/g, '<br><br>');
+        }
+        
       } catch (error) {
-        console.error('生成内容失败:', error)
-        alert('生成失败，请稍后重试')
+        console.error('生成内容失败:', error);
+        // 向用户显示更友好的错误信息
+        if (error.response) {
+          const statusCode = error.response.status;
+          if (statusCode === 401) {
+            alert('请先登录后再尝试生成内容');
+            this.$router.push('/login');
+          } else if (statusCode === 400) {
+            alert(`请求参数错误: ${error.response.data.detail || '请检查输入'}`);
+          } else {
+            alert(`生成失败: ${error.response.data.detail || '服务内部错误'}`);
+          }
+        } else if (error.request) {
+          alert('无法连接到服务器，请检查网络连接或服务器是否运行');
+        } else {
+          alert('生成失败，请检查网络连接或联系管理员');
+        }
       } finally {
-        this.isGenerating = false
+        this.isGenerating = false;
       }
     },
     

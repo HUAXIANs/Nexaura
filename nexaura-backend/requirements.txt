@@ -1,6 +1,6 @@
 annotated-types==0.7.0
 anyio==4.9.0
-bcrypt==4.3.0
+bcrypt==3.2.0
 cffi==1.17.1
 click==8.2.1
 cryptography==45.0.4
@@ -26,3 +26,4 @@ starlette==0.46.2
 typing-inspection==0.4.1
 typing_extensions==4.14.0
 uvicorn==0.34.3
+websocket-client==1.6.1  # 讯飞 WebSocket API 依赖

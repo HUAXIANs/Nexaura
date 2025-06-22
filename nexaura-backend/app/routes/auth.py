@@ -36,6 +36,9 @@ class User(BaseModel):
     username: str
     email: str
 
+class TokenData(Token):
+    user: User
+
 # 模擬用戶數據庫 (在實際項目中應該使用真實數據庫)
 fake_users_db = {}
 
@@ -77,7 +80,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用戶不存在",
+            detail="用戶不存在或憑證已失效",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
@@ -105,7 +108,7 @@ async def register(user: UserRegister):
     
     return {"message": "用戶註冊成功", "user_id": user_id}
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=TokenData)
 async def login(user: UserLogin):
     # 驗證用戶
     db_user = fake_users_db.get(user.email)
@@ -122,7 +125,15 @@ async def login(user: UserLogin):
         data={"sub": user.email}, expires_delta=access_token_expires
     )
     
-    return {"access_token": access_token, "token_type": "bearer"}
+    return TokenData(
+        access_token=access_token, 
+        token_type="bearer",
+        user=User(
+            id=db_user["id"],
+            username=db_user["username"],
+            email=db_user["email"]
+        )
+    )
 
 @router.get("/me", response_model=User)
 async def read_users_me(current_user: dict = Depends(get_current_user)):

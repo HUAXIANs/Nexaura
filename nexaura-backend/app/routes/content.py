@@ -4,6 +4,9 @@ from typing import List, Optional
 import asyncio
 import random
 from app.routes.auth import get_current_user
+from app.services import xunfei_api
+import json
+import re
 
 router = APIRouter()
 
@@ -20,108 +23,108 @@ class GeneratedContent(BaseModel):
     tags: List[str]
     image_descriptions: Optional[List[str]] = None
 
-# 模擬內容生成服務
-class ContentGenerator:
-    @staticmethod
-    async def generate_xiaohongshu_content(topic: str, style: str) -> GeneratedContent:
-        # 模擬 API 調用延遲
-        await asyncio.sleep(2)
-        
-        # 模擬不同風格的內容生成
-        if style == "explore":
-            return ContentGenerator._generate_explore_style(topic)
-        else:
-            return ContentGenerator._generate_default_style(topic)
-    
-    @staticmethod
-    def _generate_explore_style(topic: str) -> GeneratedContent:
-        # 模擬探店種草風格的內容生成
-        titles = [
-            f"📍{topic}｜隱藏在城市裡的寶藏店！",
-            f"🔥{topic}｜這家店真的太絕了！",
-            f"✨{topic}｜終於找到了心中的完美店鋪",
-            f"💯{topic}｜強烈推薦這家神仙店鋪！"
-        ]
-        
-        content_templates = [
-            f"""今天要和大家分享關於{topic}的超棒體驗！🥰
-
-📍 地點：市中心附近
-🕐 營業時間：10:00-22:00
-
-✨ 亮點：
-• 環境超棒，很適合拍照📸
-• 服務態度很好，店員很熱情
-• 性價比很高，值得推薦💰
-
-真的是一次很棒的體驗！姐妹們快去打卡吧～
-
-#推薦理由：
-1. 環境優雅，氛圍感滿分
-2. 產品質量很好，值得信賴
-3. 價格合理，學生黨也能承受
-
-總的來說，這次的{topic}體驗讓我很滿意，已經加入我的收藏清單了！下次還會再來的～""",
-            
-            f"""關於{topic}，我終於找到了心中的完美選擇！💕
-
-🌟 第一印象：
-一進門就被環境吸引了，裝修風格很有特色，每個角落都很用心。
-
-🌟 體驗感受：
-• 氛圍很棒，讓人感覺很放鬆
-• 細節處理得很好，可以看出用心程度
-• 整體感受超出預期
-
-💡 小貼士：
-建議大家提前預約，避免排隊等待。最好選擇非高峰時段，體驗會更好～
-
-真的很推薦大家去試試！相信你們也會喜歡的～"""
-        ]
-        
-        tags_pool = [
-            f"{topic}", "打卡聖地", "強烈推薦", "性價比高", "環境很棒",
-            "服務貼心", "值得收藏", "下次還來", "朋友聚會", "週末好去處"
-        ]
-        
-        image_descriptions = [
-            f"{topic}的外觀環境，展現整體氛圍",
-            f"內部環境細節，突出特色裝修風格",
-            f"產品或服務的特寫，展現品質感"
-        ]
-        
-        return GeneratedContent(
-            title=random.choice(titles),
-            content=random.choice(content_templates),
-            tags=random.sample(tags_pool, min(5, len(tags_pool))),
-            image_descriptions=image_descriptions
-        )
-    
-    @staticmethod
-    def _generate_default_style(topic: str) -> GeneratedContent:
-        return GeneratedContent(
-            title=f"關於{topic}的分享",
-            content=f"今天想和大家分享關於{topic}的一些心得和體驗...",
-            tags=[topic, "分享", "推薦"],
-            image_descriptions=[f"{topic}相關圖片"]
-        )
-
-# 模擬訊飛 API 調用
+# 改造这个函数，让它调用真实的讯飞API
 async def call_xunfei_api(topic: str, platform: str, style: str) -> GeneratedContent:
     """
-    模擬調用訊飛 API 生成內容
-    在實際項目中，這裡會調用真實的訊飛星火 API
+    调用真实的讯飞星火API生成内容
     """
-    # TODO: 實現真實的訊飛 API 調用
-    # 這裡使用模擬數據
-    
-    if platform == "xiaohongshu":
-        return await ContentGenerator.generate_xiaohongshu_content(topic, style)
-    else:
+    if platform != "xiaohongshu":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"暫不支持平台：{platform}"
+            detail=f"暂不支持平台：{platform}"
         )
+
+    # 改造Prompt，使用分隔符而不是要求返回JSON
+    prompt = f"""
+请你扮演一位资深的小红书运营专家。
+你的任务是根据以下要求，为我创作一篇爆款小redbook文案。
+
+【主题】: {topic}
+【风格】: {style}
+
+【要求】:
+1. 严格按照下面的格式和分隔符输出，不要添加任何额外的解释性文字。
+2. 各个部分之间使用 '---xxx---' 作为分隔符。
+
+---xxx---
+[TITLE]
+这里是生成的标题
+
+---xxx---
+[CONTENT]
+这里是生成的正文内容
+段落之间请用空行隔开
+
+---xxx---
+[TAGS]
+这里是生成的标签, 每个标签用英文逗号分隔
+
+---xxx---
+[IMAGES]
+这里是生成的3条配图建议, 每个建议占一行
+"""
+
+    try:
+        # 调用我们封装好的函数
+        response_text = await xunfei_api.generate_text_with_spark(prompt)
+        
+        if not response_text:
+            print("讯飞API未返回任何内容，使用默认响应")
+            default_response = {
+                "title": f"关于{topic}的分享",
+                "content": "由于AI生成内容出现问题，这是一个默认内容。\n\n请稍后再试。",
+                "tags": ["小红书", "分享", topic],
+                "image_descriptions": ["相关图片"]
+            }
+            return GeneratedContent(**default_response)
+        
+        print(f"讯飞API原始返回: {response_text}")
+        
+        # 解析由'---xxx---'分隔的文本
+        parts = response_text.split('---xxx---')
+        
+        response_data = {}
+        
+        for part in parts:
+            part = part.strip()
+            if part.startswith('[TITLE'):
+                try:
+                    response_data['title'] = part.split('\n', 1)[1].strip()
+                except IndexError:
+                    pass # Ignore empty parts
+            elif part.startswith('[CONTENT'):
+                try:
+                    response_data['content'] = part.split('\n', 1)[1].strip()
+                except IndexError:
+                    pass
+            elif part.startswith('[TAGS'):
+                try:
+                    tags_str = part.split('\n', 1)[1].strip()
+                    response_data['tags'] = [tag.strip() for tag in tags_str.split(',')]
+                except IndexError:
+                    pass
+            elif part.startswith('[IMAGES'):
+                try:
+                    images_str = part.split('\n', 1)[1].strip()
+                    response_data['image_descriptions'] = [desc.strip() for desc in images_str.split('\n')]
+                except IndexError:
+                    pass
+        
+        # 确保所有必需字段都存在，提供默认值
+        if 'title' not in response_data:
+            response_data['title'] = f"关于{topic}的分享"
+        if 'content' not in response_data:
+            response_data['content'] = "AI未能按预期格式生成内容，请稍后再试。"
+        if 'tags' not in response_data:
+            response_data['tags'] = [topic]
+        if 'image_descriptions' not in response_data:
+            response_data['image_descriptions'] = ["AI未能生成图片建议"]
+            
+        return GeneratedContent(**response_data)
+
+    except Exception as e:
+        print(f"调用AI服务或解析内容时发生错误: {e}")
+        raise HTTPException(status_code=500, detail=f"AI服务调用或解析失败: {str(e)}")
 
 @router.post("/generate", response_model=GeneratedContent)
 async def generate_content(
@@ -145,6 +148,12 @@ async def generate_content(
             style=request.style
         )
         
+        if generated_content is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="內容生成服務返回了空的結果"
+            )
+            
         return generated_content
         
     except Exception as e:
