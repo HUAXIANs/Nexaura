@@ -1,12 +1,14 @@
 {
   "welcome": "欢迎使用 NexAura",
   "app": {
-    "tagline": "智能文档创作平台"
+    "tagline": "您的下一代AI助手"
   },
   "nav": {
     "home": "首页",
     "login": "登录",
-    "dashboard": "工作台"
+    "dashboard": "工作台",
+    "profile": "个人中心",
+    "logout": "退出登录"
   },
   "hero": {
     "title": "欢迎使用 NEXAURA",
@@ -27,8 +29,8 @@
     "card4_desc": "基于国产算力平台，数据安全有保障"
   },
   "login": {
-    "title": "登录 NEXAURA",
-    "email": "邮箱",
+    "title": "登录到您的账户",
+    "email": "电子邮箱",
     "password": "密码",
     "button_login": "登录",
     "prompt_register": "还没有帐号？",
@@ -80,5 +82,12 @@
     "project_desc_placeholder": "简单描述这个项目的内容和目标",
     "button_cancel": "取消",
     "button_create": "创建项目"
+  },
+  "profile": {
+    "title": "个人中心",
+    "username": "用户名",
+    "email": "电子邮箱",
+    "loading": "正在加载用户信息...",
+    "logout": "退出登录"
   }
 } 

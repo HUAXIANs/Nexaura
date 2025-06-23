@@ -1,12 +1,14 @@
 {
   "welcome": "Welcome to NexAura",
   "app": {
-    "tagline": "Intelligent Document Creation Assistant"
+    "tagline": "Your Next-Gen AI Assistant"
   },
   "nav": {
     "home": "Home",
     "login": "Login",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "logout": "Logout"
   },
   "hero": {
     "title": "Welcome to NEXAURA",
@@ -27,7 +29,7 @@
     "card4_desc": "Based on a domestic computing power platform, ensuring data security."
   },
   "login": {
-    "title": "Login to NEXAURA",
+    "title": "Login to your account",
     "email": "Email",
     "password": "Password",
     "button_login": "Login",
@@ -80,5 +82,12 @@
     "project_desc_placeholder": "Briefly describe the content and goals of this project",
     "button_cancel": "Cancel",
     "button_create": "Create Project"
+  },
+  "profile": {
+    "title": "Profile",
+    "username": "Username",
+    "email": "Email",
+    "loading": "Loading user information...",
+    "logout": "Logout"
   }
 } 

@@ -1,89 +1,109 @@
 <template>
-  <div id="app">
-    <nav class="navbar">
-      <div class="nav-brand">
-        <h1>NEXAURA</h1>
-        <p>{{ t('app.tagline') }}</p>
-      </div>
-      <div class="nav-links">
-        <router-link to="/" class="nav-link">{{ t('nav.home') }}</router-link>
-        <router-link to="/login" class="nav-link">{{ t('nav.login') }}</router-link>
-        <router-link to="/dashboard" class="nav-link">{{ t('nav.dashboard') }}</router-link>
-        <select v-model="locale" class="lang-switcher">
-          <option value="zh-CN">简体中文</option>
-          <option value="en">English</option>
-        </select>
-      </div>
-    </nav>
-    <main class="main-content">
+  <div id="app-container">
+    <header class="app-header">
+      <nav class="main-nav">
+        <router-link to="/" class="nav-logo">NexAura</router-link>
+        <div class="nav-links">
+          <template v-if="isAuthenticated">
+            <router-link to="/dashboard">{{ $t('nav.dashboard') }}</router-link>
+            <router-link to="/profile">{{ $t('nav.profile') }}</router-link>
+            <a href="#" @click.prevent="handleLogout">{{ $t('nav.logout') }}</a>
+          </template>
+          <template v-else>
+            <router-link to="/">{{ $t('nav.home') }}</router-link>
+            <router-link to="/login">{{ $t('nav.login') }}</router-link>
+          </template>
+        </div>
+      </nav>
+    </header>
+    <main class="app-content">
       <router-view />
     </main>
+    <footer class="app-footer">
+      <p>&copy; 2024 NexAura. All rights reserved.</p>
+    </footer>
   </div>
 </template>
 
-<script setup>
-import { useI18n } from 'vue-i18n';
-const { t, locale } = useI18n();
+<script>
+import { mapState, mapActions } from 'pinia';
+import { useAuthStore } from './stores/auth';
+
+export default {
+  name: 'App',
+  computed: {
+    ...mapState(useAuthStore, ['isAuthenticated']),
+  },
+  methods: {
+    ...mapActions(useAuthStore, ['logout']),
+    handleLogout() {
+      this.logout();
+    }
+  }
+};
 </script>
 
-<style scoped>
-.navbar {
+<style>
+/* General App Styles */
+#app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f7fafc;
+}
+
+.app-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 0 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.main-nav {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  height: 64px;
 }
-.nav-brand h1 {
-  margin: 0;
-  font-size: 1.8rem;
-  font-weight: bold;
-}
-.nav-brand p {
-  margin: 0;
-  font-size: 0.9rem;
-  opacity: 0.9;
-}
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-.nav-link {
+
+.nav-logo {
+  font-size: 1.5rem;
+  font-weight: 700;
   color: white;
   text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  transition: background-color 0.3s;
 }
-.nav-link:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+
+.nav-links a {
+  margin-left: 1.5rem;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+  transition: color 0.3s ease;
 }
-.nav-link.router-link-active {
-  background-color: rgba(255, 255, 255, 0.3);
-}
-.main-content {
-  min-height: calc(100vh - 80px);
-  padding: 2rem;
-}
-.lang-switcher {
-  background-color: rgba(255, 255, 255, 0.1);
+
+.nav-links a:hover,
+.nav-links a.router-link-exact-active {
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 0.5rem;
-  padding: 0.6rem;
-  margin-left: 1rem;
-  cursor: pointer;
-  font-size: 0.9rem;
 }
-.lang-switcher:focus {
-  outline: none;
+
+.app-content {
+  flex-grow: 1;
+  padding: 2rem;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
 }
-.lang-switcher option {
-  color: black;
-  background-color: white;
+
+.app-footer {
+  text-align: center;
+  padding: 1.5rem;
+  color: #a0aec0;
+  font-size: 0.875rem;
+  background-color: #ffffff;
+  border-top: 1px solid #e2e8f0;
 }
 </style>
 

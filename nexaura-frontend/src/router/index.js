@@ -2,7 +2,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
 import Dashboard from '../views/Dashboard.vue'
+import Profile from '../views/Profile.vue'
 import { AUTH } from '../config'
+import { useAuthStore } from '../stores/auth'
 
 const routes = [
   {
@@ -13,12 +15,23 @@ const routes = [
   {
     path: '/login',
     name: 'Login',
-    component: Login
+    component: Login,
+    meta: {
+      guest: true
+    }
   },
   {
     path: '/dashboard',
     name: 'Dashboard',
     component: Dashboard,
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: Profile,
     meta: {
       requiresAuth: true
     }
@@ -32,22 +45,25 @@ const router = createRouter({
 
 // 全局前置守卫
 router.beforeEach((to, from, next) => {
-  // 检查路由是否需要认证
+  const authStore = useAuthStore();
+  const isAuthenticated = authStore.isAuthenticated;
+
   if (to.matched.some(record => record.meta.requiresAuth)) {
-    // 检查用户是否已登录
-    const token = localStorage.getItem(AUTH.TOKEN_KEY);
-    if (!token) {
-      // 未登录，重定向到登录页
+    if (!isAuthenticated) {
       next({
         path: '/login',
         query: { redirect: to.fullPath }
       });
     } else {
-      // 已登录，允许访问
+      next();
+    }
+  } else if (to.matched.some(record => record.meta.guest)) {
+    if (isAuthenticated) {
+      next({ path: '/dashboard' });
+    } else {
       next();
     }
   } else {
-    // 不需要认证的路由，直接放行
     next();
   }
 });

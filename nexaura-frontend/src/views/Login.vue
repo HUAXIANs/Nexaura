@@ -77,8 +77,8 @@
 </template>
 
 <script>
-import axios from 'axios';
-import { API_ENDPOINTS, AUTH } from '../config';
+import { useAuthStore } from '../stores/auth';
+import { mapActions, mapState } from 'pinia';
 
 export default {
   name: 'Login',
@@ -97,44 +97,19 @@ export default {
       showRegister: false
     }
   },
+  computed: {
+    ...mapState(useAuthStore, ['isAuthenticated'])
+  },
   methods: {
+    ...mapActions(useAuthStore, ['login', 'register']),
     async handleLogin() {
       this.isLoading = true;
       try {
-        // 实现真实的登录逻辑
-        console.log('登录信息:', this.loginForm);
-        
-        // 调用后端API
-        const apiUrl = API_ENDPOINTS.LOGIN;
-        const response = await axios.post(apiUrl, {
+        await this.login({
           email: this.loginForm.email,
           password: this.loginForm.password
         });
-        
-        console.log('登录响应:', response.data);
-        
-        // 保存token到localStorage
-        if (response.data && response.data.access_token) {
-          localStorage.setItem(AUTH.TOKEN_KEY, response.data.access_token);
-          
-          // 保存用户信息
-          if (response.data.user) {
-            localStorage.setItem(AUTH.USER_INFO_KEY, JSON.stringify(response.data.user));
-          } else {
-            // 如果后端没有返回user信息，创建一个简单的用户对象
-            const userInfo = {
-              email: this.loginForm.email,
-              id: 1,  // 临时ID
-              username: this.loginForm.email.split('@')[0]  // 从邮箱提取用户名
-            };
-            localStorage.setItem(AUTH.USER_INFO_KEY, JSON.stringify(userInfo));
-          }
-          
-          // 登录成功后跳转到工作台
-          this.$router.push('/dashboard');
-        } else {
-          throw new Error('登录响应中没有找到token');
-        }
+        // 登录成功后的跳转已在 auth store 中处理
       } catch (error) {
         console.error('登录失败:', error);
         
@@ -158,25 +133,18 @@ export default {
     },
     async handleRegister() {
       try {
-        // 实现真实的注册逻辑
-        console.log('注册信息:', this.registerForm);
-        
-        // 调用后端API
-        const apiUrl = API_ENDPOINTS.REGISTER;
-        const response = await axios.post(apiUrl, {
+        await this.register({
           username: this.registerForm.username,
           email: this.registerForm.email,
           password: this.registerForm.password
         });
-        
-        console.log('注册响应:', response.data);
         
         alert('注册成功！请登录');
         this.showRegister = false;
         
         // 自动填充登录表单
         this.loginForm.email = this.registerForm.email;
-        this.loginForm.password = this.registerForm.password;
+        this.loginForm.password = ""; // 密码置空，让用户自己输入
         
         // 清空注册表单
         this.registerForm.username = '';

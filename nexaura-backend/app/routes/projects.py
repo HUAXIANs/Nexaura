@@ -102,7 +102,7 @@ async def update_project(
     
     return Project(**project)
 
-@router.delete("/{project_id}")
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(project_id: int, current_user: dict = Depends(get_current_user)):
     project = fake_projects_db.get(project_id)
     if not project:
@@ -118,5 +118,5 @@ async def delete_project(project_id: int, current_user: dict = Depends(get_curre
         )
     
     del fake_projects_db[project_id]
-    return {"message": "項目已刪除"}
+    return
 

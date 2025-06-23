@@ -19,11 +19,13 @@
           class="project-card"
           @click="selectProject(project)"
         >
+          <button class="delete-project-btn" @click.stop="confirmDeleteProject(project.id)">
+            &times;
+          </button>
           <h3>{{ isI18nKey(project.title) ? $t(project.title) : project.title }}</h3>
           <p>{{ isI18nKey(project.description) ? $t(project.description) : project.description }}</p>
           <div class="card-footer">
-            <span>{{ formatDate(project.createdAt) }}</span>
-            <span class="status" :class="project.status">{{ $t('project_card.status_' + project.status) }}</span>
+            <span>{{ formatDate(project.created_at) }}</span>
           </div>
         </div>
       </div>
@@ -147,22 +149,13 @@
 </template>
 
 <script>
-import axios from 'axios';
-import { API_ENDPOINTS, AUTH } from '../config';
+import { apiClient } from '../stores/auth'; // 导入配置好的 apiClient
 
 export default {
   name: 'Dashboard',
   data() {
     return {
-      projects: [
-        {
-          id: 1,
-          title: 'dashboard.projects.p1.title',
-          description: 'dashboard.projects.p1.description',
-          createdAt: new Date('2024-01-15'),
-          status: 'ongoing'
-        }
-      ],
+      projects: [], // 初始化为空数组，将从API获取
       selectedProject: null,
       showCreateProject: false,
       newProject: {
@@ -173,17 +166,31 @@ export default {
       targetPlatform: 'xiaohongshu',
       contentStyle: 'explore',
       generatedContent: null,
-      isGenerating: false
+      isGenerating: false,
+      isLoadingProjects: true // 添加加载状态
     }
   },
   mounted() {
-    // 组件挂载时，自动选择第一个项目
-    if (this.projects.length > 0 && !this.selectedProject) {
-      console.log('自动选择第一个项目');
-      this.selectProject(this.projects[0]);
-    }
+    this.fetchProjects(); // 组件挂载时获取项目列表
   },
   methods: {
+    async fetchProjects() {
+      this.isLoadingProjects = true;
+      try {
+        const response = await apiClient.get('/projects');
+        this.projects = response.data;
+        // 获取到项目后，自动选择第一个
+        if (this.projects.length > 0) {
+          console.log('自动选择第一个项目');
+          this.selectProject(this.projects[0]);
+        }
+      } catch (error) {
+        console.error('获取项目列表失败:', error);
+        // 这里可以添加用户友好的错误提示
+      } finally {
+        this.isLoadingProjects = false;
+      }
+    },
     isI18nKey(text) {
       return typeof text === 'string' && text.includes('.');
     },
@@ -194,24 +201,22 @@ export default {
       this.generatedContent = null;
     },
     
-    createProject() {
-      const project = {
-        id: Date.now(),
-        title: this.newProject.title,
-        description: this.newProject.description,
-        createdAt: new Date(),
-        status: 'ongoing'  // 使用英文状态，与i18n保持一致
-      }
-      
-      console.log('创建新项目:', project);
-      this.projects.push(project);
-      this.selectedProject = project;
-      this.showCreateProject = false;
-      
-      // 清空表单
-      this.newProject = {
-        title: '',
-        description: ''
+    async createProject() {
+      try {
+        const response = await apiClient.post('/projects', this.newProject);
+        // 使用后端返回的数据更新列表
+        this.projects.push(response.data);
+        this.selectProject(response.data); // 选择新创建的项目
+        this.showCreateProject = false;
+        
+        // 清空表单
+        this.newProject = {
+          title: '',
+          description: ''
+        }
+      } catch (error) {
+        console.error('创建项目失败:', error);
+        // 添加错误处理逻辑
       }
     },
     
@@ -226,19 +231,8 @@ export default {
       };
 
       try {
-        // 从localStorage获取token
-        const token = localStorage.getItem(AUTH.TOKEN_KEY);
-        
-        // 使用配置文件中的API地址
-        const apiUrl = API_ENDPOINTS.GENERATE_CONTENT;
-        
-        // 发起真实的API请求
-        const response = await axios.post(apiUrl, requestBody, {
-          headers: {
-            'Authorization': token ? `Bearer ${token}` : '',
-            'Content-Type': 'application/json'
-          }
-        });
+        // 使用配置好的 apiClient，它会自动附加认证头
+        const response = await apiClient.post('/content/generate', requestBody);
 
         // 将返回的数据赋值给generatedContent
         this.generatedContent = response.data;
@@ -272,12 +266,33 @@ export default {
       }
     },
     
-    formatDate(date) {
-      const localeMap = {
-        'en': 'en-US',
-        'zh-CN': 'zh-CN'
-      };
-      return date.toLocaleDateString(localeMap[this.$i18n.locale] || 'default');
+    async confirmDeleteProject(projectId) {
+      if (window.confirm('您确定要删除这个项目吗？此操作不可撤销。')) {
+        try {
+          await apiClient.delete(`/projects/${projectId}`);
+          // 从项目列表中移除已删除的项目
+          this.projects = this.projects.filter(p => p.id !== projectId);
+          // 如果删除的是当前选中的项目，则清空选中状态
+          if (this.selectedProject && this.selectedProject.id === projectId) {
+            this.selectedProject = null;
+            this.generatedContent = null;
+          }
+        } catch (error) {
+          console.error('删除项目失败:', error);
+          alert('删除项目失败，请稍后重试。');
+        }
+      }
+    },
+    
+    formatDate(dateString) {
+      if (!dateString) {
+        return '日期无效';
+      }
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return '日期格式错误';
+      }
+      return date.toLocaleDateString();
     }
   }
 }
@@ -351,12 +366,43 @@ export default {
 }
 
 .project-card {
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  background: white;
   padding: 1.5rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.3s ease;
+  position: relative; /* 为删除按钮定位 */
+}
+
+.delete-project-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: #f1f5f9;
+  color: #64748b;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+.project-card:hover .delete-project-btn {
+  opacity: 1;
+  background: #e2e8f0;
+}
+
+.delete-project-btn:hover {
+  background: #ef4444;
+  color: white;
 }
 
 .project-card:hover {
