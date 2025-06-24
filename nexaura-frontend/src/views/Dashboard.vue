@@ -22,8 +22,8 @@
           <button class="delete-project-btn" @click.stop="confirmDeleteProject(project.id)">
             &times;
           </button>
-          <h3>{{ isI18nKey(project.title) ? $t(project.title) : project.title }}</h3>
-          <p>{{ isI18nKey(project.description) ? $t(project.description) : project.description }}</p>
+          <h3>{{ project.name }}</h3>
+          <p>{{ project.description }}</p>
           <div class="card-footer">
             <span>{{ formatDate(project.created_at) }}</span>
           </div>
@@ -41,7 +41,7 @@
     <!-- 創作區域 -->
     <div v-if="selectedProject" class="creation-section">
       <div class="creation-card">
-        <h2>{{ isI18nKey(selectedProject.title) ? $t(selectedProject.title) : selectedProject.title }} - {{ $t('creation.title_suffix') }}</h2>
+        <h2>{{ selectedProject.name }} - {{ $t('creation.title_suffix') }}</h2>
         <form @submit.prevent="handleGenerate">
           <div class="form-group">
             <label for="creation-topic">{{ $t('creation.topic') }}</label>
@@ -85,7 +85,7 @@
           </div>
           
           <div class="content-body">
-            <p v-html="generatedContent.content"></p>
+            <p class="formatted-content">{{ generatedContent.content }}</p>
           </div>
           
           <div class="content-tags">
@@ -118,11 +118,11 @@
         <h3>{{ $t('create_project_modal.title') }}</h3>
         <form @submit.prevent="createProject" class="project-form">
           <div class="form-group">
-            <label for="project-title">{{ $t('create_project_modal.project_title_label') }}</label>
+            <label for="project-name">{{ $t('create_project_modal.project_title_label') }}</label>
             <input 
               type="text" 
-              id="project-title" 
-              v-model="newProject.title" 
+              id="project-name" 
+              v-model="newProject.name" 
               required 
               :placeholder="$t('create_project_modal.project_title_placeholder')"
             />
@@ -148,154 +148,157 @@
   </div>
 </template>
 
-<script>
-import { apiClient } from '../stores/auth'; // 导入配置好的 apiClient
+<script setup>
+import { ref, onMounted } from 'vue';
+import { supabase } from '../supabase'; // 导入 Supabase 客户端
+import { useAuthStore } from '../stores/auth';
+import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
-export default {
-  name: 'Dashboard',
-  data() {
-    return {
-      projects: [], // 初始化为空数组，将从API获取
-      selectedProject: null,
-      showCreateProject: false,
-      newProject: {
-        title: '',
-        description: ''
-      },
-      creationTopic: '',
-      targetPlatform: 'xiaohongshu',
-      contentStyle: 'explore',
-      generatedContent: null,
-      isGenerating: false,
-      isLoadingProjects: true // 添加加载状态
-    }
-  },
-  mounted() {
-    this.fetchProjects(); // 组件挂载时获取项目列表
-  },
-  methods: {
-    async fetchProjects() {
-      this.isLoadingProjects = true;
-      try {
-        const response = await apiClient.get('/projects');
-        this.projects = response.data;
-        // 获取到项目后，自动选择第一个
-        if (this.projects.length > 0) {
-          console.log('自动选择第一个项目');
-          this.selectProject(this.projects[0]);
-        }
-      } catch (error) {
-        console.error('获取项目列表失败:', error);
-        // 这里可以添加用户友好的错误提示
-      } finally {
-        this.isLoadingProjects = false;
-      }
-    },
-    isI18nKey(text) {
-      return typeof text === 'string' && text.includes('.');
-    },
-    
-    selectProject(project) {
-      console.log('选择项目:', project);
-      this.selectedProject = project;
-      this.generatedContent = null;
-    },
-    
-    async createProject() {
-      try {
-        const response = await apiClient.post('/projects', this.newProject);
-        // 使用后端返回的数据更新列表
-        this.projects.push(response.data);
-        this.selectProject(response.data); // 选择新创建的项目
-        this.showCreateProject = false;
-        
-        // 清空表单
-        this.newProject = {
-          title: '',
-          description: ''
-        }
-      } catch (error) {
-        console.error('创建项目失败:', error);
-        // 添加错误处理逻辑
-      }
-    },
-    
-    async handleGenerate() {
-      this.isGenerating = true;
-      this.generatedContent = null; // 开始生成时，清空之前的结果
+// --- State Management ---
+const projects = ref([]);
+const selectedProject = ref(null);
+const showCreateProject = ref(false);
+const newProject = ref({ name: '', description: '' });
+const creationTopic = ref('');
+const targetPlatform = ref('xiaohongshu');
+const contentStyle = ref('explore');
+const generatedContent = ref(null);
+const isGenerating = ref(false);
+const isLoadingProjects = ref(true);
 
-      const requestBody = {
-        topic: this.creationTopic,
-        platform: this.targetPlatform,
-        style: this.contentStyle
-      };
+const authStore = useAuthStore();
 
-      try {
-        // 使用配置好的 apiClient，它会自动附加认证头
-        const response = await apiClient.post('/content/generate', requestBody);
-
-        // 将返回的数据赋值给generatedContent
-        this.generatedContent = response.data;
-        
-        // 处理内容显示
-        if (this.generatedContent && this.generatedContent.content) {
-          // 将换行符转换为<br>标签，以便正确显示
-          this.generatedContent.content = this.generatedContent.content.replace(/\n\n/g, '<br><br>');
-        }
-        
-      } catch (error) {
-        console.error('生成内容失败:', error);
-        // 向用户显示更友好的错误信息
-        if (error.response) {
-          const statusCode = error.response.status;
-          if (statusCode === 401) {
-            alert('请先登录后再尝试生成内容');
-            this.$router.push('/login');
-          } else if (statusCode === 400) {
-            alert(`请求参数错误: ${error.response.data.detail || '请检查输入'}`);
-          } else {
-            alert(`生成失败: ${error.response.data.detail || '服务内部错误'}`);
-          }
-        } else if (error.request) {
-          alert('无法连接到服务器，请检查网络连接或服务器是否运行');
-        } else {
-          alert('生成失败，请检查网络连接或联系管理员');
-        }
-      } finally {
-        this.isGenerating = false;
-      }
-    },
-    
-    async confirmDeleteProject(projectId) {
-      if (window.confirm('您确定要删除这个项目吗？此操作不可撤销。')) {
-        try {
-          await apiClient.delete(`/projects/${projectId}`);
-          // 从项目列表中移除已删除的项目
-          this.projects = this.projects.filter(p => p.id !== projectId);
-          // 如果删除的是当前选中的项目，则清空选中状态
-          if (this.selectedProject && this.selectedProject.id === projectId) {
-            this.selectedProject = null;
-            this.generatedContent = null;
-          }
-        } catch (error) {
-          console.error('删除项目失败:', error);
-          alert('删除项目失败，请稍后重试。');
-        }
-      }
-    },
-    
-    formatDate(dateString) {
-      if (!dateString) {
-        return '日期无效';
-      }
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return '日期格式错误';
-      }
-      return date.toLocaleDateString();
-    }
+// 创建一个经过认证的 axios 实例，用于调用后端业务逻辑 API
+const createApiClient = () => {
+  const token = authStore.session?.access_token;
+  if (!token) {
+    console.error("无法创建 API 客户端：用户未认证");
+    return null;
   }
-}
+  return axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+};
+
+// --- Lifecycle ---
+onMounted(() => {
+  fetchProjects();
+});
+
+// --- Methods ---
+const fetchProjects = async () => {
+  isLoadingProjects.value = true;
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    
+    projects.value = data;
+    if (data && data.length > 0) {
+      selectProject(data[0]);
+    }
+  } catch (error) {
+    console.error('获取项目列表失败:', error.message);
+  } finally {
+    isLoadingProjects.value = false;
+  }
+};
+
+const createProject = async () => {
+  if (!newProject.value.name) {
+    alert('项目标题不能为空');
+    return;
+  }
+  try {
+    const { data, error } = await supabase
+      .from('projects')
+      .insert({ 
+        name: newProject.value.name,
+        description: newProject.value.description,
+        user_id: authStore.user.id
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    projects.value.unshift(data);
+    selectProject(data);
+    showCreateProject.value = false;
+    newProject.value = { name: '', description: '' };
+  } catch (error) {
+    console.error('创建项目失败:', error.message);
+  }
+};
+
+const confirmDeleteProject = async (projectId) => {
+    if (confirm('您确定要删除这个项目吗？此操作不可撤销。')) {
+        await deleteProject(projectId);
+    }
+};
+
+const deleteProject = async (projectId) => {
+    try {
+        const { error } = await supabase
+            .from('projects')
+            .delete()
+            .eq('id', projectId);
+
+        if (error) throw error;
+
+        // 从 UI 中移除项目
+        projects.value = projects.value.filter(p => p.id !== projectId);
+        if (selectedProject.value?.id === projectId) {
+            selectedProject.value = projects.value.length > 0 ? projects.value[0] : null;
+        }
+    } catch (error) {
+        console.error('删除项目失败:', error.message);
+        alert('删除项目失败，请稍后重试。');
+    }
+};
+
+const handleGenerate = async () => {
+  isGenerating.value = true;
+  generatedContent.value = null;
+  const apiClient = createApiClient();
+  if (!apiClient) return;
+
+  const requestBody = {
+    topic: creationTopic.value,
+    platform: targetPlatform.value,
+    style: contentStyle.value
+  };
+
+  try {
+    const response = await apiClient.post('/content/generate', requestBody);
+    generatedContent.value = response.data;
+    if (generatedContent.value && generatedContent.value.content) {
+      generatedContent.value.content = generatedContent.value.content.replace(/\\n/g, '<br>');
+    }
+  } catch (error) {
+    console.error('生成内容失败:', error);
+    alert(error.response?.data?.detail || error.message || '生成内容失败，请稍后重试');
+  } finally {
+    isGenerating.value = false;
+  }
+};
+
+const selectProject = (project) => {
+  selectedProject.value = project;
+  generatedContent.value = null;
+};
+
+// --- Utility Functions ---
+const isI18nKey = (text) => typeof text === 'string' && text.includes('.');
+const formatDate = (dateString) => new Date(dateString).toLocaleDateString();
+
 </script>
 
 <style scoped>
@@ -568,7 +571,16 @@ input[type="text"], textarea, select {
   margin-bottom: 1rem;
 }
 
+.content-body p.formatted-content {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: #333;
+  line-height: 1.8;
+  font-size: 0.95rem;
+}
+
 .content-tags {
+  margin-top: 20px;
   margin-bottom: 1rem;
 }
 

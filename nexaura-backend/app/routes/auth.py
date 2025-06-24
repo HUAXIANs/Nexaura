@@ -1,25 +1,15 @@
 from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, EmailStr
-from typing import Optional
-import jwt
-from datetime import datetime, timedelta
-from passlib.context import CryptContext
+from app.services.supabase_client import supabase
+from gotrue.errors import AuthApiError
 
 router = APIRouter()
-security = HTTPBearer()
 
-# 密碼加密配置
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-# JWT 配置
-SECRET_KEY = "your-secret-key-here"  # 在生產環境中應該使用環境變量
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-# Pydantic 模型
+# Pydantic Models
 class UserRegister(BaseModel):
-    username: str
     email: EmailStr
     password: str
 
@@ -27,119 +17,74 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-class User(BaseModel):
-    id: int
-    username: str
-    email: str
-
-class TokenData(Token):
-    user: User
-
-# 模擬用戶數據庫 (在實際項目中應該使用真實數據庫)
-fake_users_db = {}
-
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+# Dependency to get current user from token
+def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
-        token = credentials.credentials
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        # get_user validates the JWT and returns the user or raises an error
+        response = supabase.auth.get_user(token)
+        user = response.user
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="無效的認證憑證",
+                detail="Invalid authentication credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-    except jwt.PyJWTError:
+        return user
+    except AuthApiError as e:
+        raise HTTPException(status_code=e.status, detail=e.message)
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="無效的認證憑證",
+            detail=f"Could not validate credentials: {e}",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    user = fake_users_db.get(email)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用戶不存在或憑證已失效",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
 
 @router.post("/register", response_model=dict)
 async def register(user: UserRegister):
-    # 檢查用戶是否已存在
-    if user.email in fake_users_db:
+    try:
+        res = supabase.auth.sign_up({
+            "email": user.email,
+            "password": user.password,
+        })
+        if res.user:
+            return {"message": "注册成功，请检查您的邮箱以完成验证", "user_id": res.user.id}
+        elif res.session:
+            return {"message": "注册并登录成功", "session": res.session}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="注册失败，请稍后重试"
+            )
+    except Exception as e:
+        error_message = str(e)
+        if "User already registered" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="该邮箱已被注册"
+            )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用戶已存在"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"服务器内部错误: {error_message}"
         )
-    
-    # 創建新用戶
-    hashed_password = get_password_hash(user.password)
-    user_id = len(fake_users_db) + 1
-    
-    fake_users_db[user.email] = {
-        "id": user_id,
-        "username": user.username,
-        "email": user.email,
-        "hashed_password": hashed_password,
-        "created_at": datetime.utcnow()
-    }
-    
-    return {"message": "用戶註冊成功", "user_id": user_id}
 
-@router.post("/login", response_model=TokenData)
+@router.post("/login", response_model=dict)
 async def login(user: UserLogin):
-    # 驗證用戶
-    db_user = fake_users_db.get(user.email)
-    if not db_user or not verify_password(user.password, db_user["hashed_password"]):
+    try:
+        res = supabase.auth.sign_in_with_password({
+            "email": user.email,
+            "password": user.password
+        })
+        return res.model_dump()
+    except Exception as e:
+        error_message = str(e)
+        if "Invalid login credentials" in error_message:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="邮箱或密码错误",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="郵箱或密碼錯誤",
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"服务器内部错误: {error_message}"
         )
-    
-    # 創建訪問令牌
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
-    )
-    
-    return TokenData(
-        access_token=access_token, 
-        token_type="bearer",
-        user=User(
-            id=db_user["id"],
-            username=db_user["username"],
-            email=db_user["email"]
-        )
-    )
-
-@router.get("/me", response_model=User)
-async def read_users_me(current_user: dict = Depends(get_current_user)):
-    return User(
-        id=current_user["id"],
-        username=current_user["username"],
-        email=current_user["email"]
-    )
 

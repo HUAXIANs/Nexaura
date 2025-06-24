@@ -1,70 +1,73 @@
 <template>
   <div class="profile-container">
     <div class="profile-card">
-      <h2>{{ $t('profile.title') }}</h2>
-      <div v-if="currentUser" class="profile-info">
-        <div class="info-item">
-          <strong>{{ $t('profile.username') }}:</strong>
-          <span>{{ currentUser.username }}</span>
-        </div>
-        <div class="info-item">
-          <strong>{{ $t('profile.email') }}:</strong>
-          <span>{{ currentUser.email }}</span>
-        </div>
+      <h2>{{ t('profile.title') }}</h2>
+      
+      <div v-if="profile && user" class="profile-info">
         <div class="info-item">
           <strong>ID:</strong>
-          <span>{{ currentUser.id }}</span>
+          <span>{{ profile.id }}</span>
+        </div>
+        <div class="info-item">
+          <strong>{{ t('profile.username') }}:</strong>
+          <span>{{ profile.username }}</span>
+        </div>
+        <div class="info-item">
+          <strong>{{ t('profile.email') }}:</strong>
+          <span>{{ user.email }}</span>
         </div>
       </div>
-      <div v-else>
-        <p>{{ $t('profile.loading') }}</p>
+
+      <div v-else class="text-center">
+        <p>{{ t('profile.loading') }}</p>
       </div>
+
       <button @click="handleLogout" class="logout-btn">
-        {{ $t('profile.logout') }}
+        {{ t('profile.logout') }}
       </button>
     </div>
   </div>
 </template>
 
-<script>
-import { mapState, mapActions } from 'pinia';
+<script setup>
+import { computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
+import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 
-export default {
-  name: 'Profile',
-  computed: {
-    ...mapState(useAuthStore, ['currentUser']),
-  },
-  methods: {
-    ...mapActions(useAuthStore, ['logout']),
-    handleLogout() {
-      this.logout();
-    },
-  },
+const authStore = useAuthStore();
+const { t } = useI18n();
+const router = useRouter();
+
+const profile = computed(() => authStore.profile);
+const user = computed(() => authStore.user);
+
+const handleLogout = async () => {
+  await authStore.logout();
+  router.push('/login');
 };
 </script>
 
 <style scoped>
 .profile-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  max-width: 800px;
+  margin: 2rem auto;
   padding: 2rem;
 }
 
 .profile-card {
-  background: white;
-  padding: 2.5rem;
-  border-radius: 1rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 500px;
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   text-align: center;
 }
 
 .profile-card h2 {
-  color: #2d3748;
+  font-size: 2rem;
+  font-weight: 600;
   margin-bottom: 2rem;
+  color: #333;
 }
 
 .profile-info {
@@ -76,7 +79,8 @@ export default {
   display: flex;
   justify-content: space-between;
   padding: 1rem 0;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #eee;
+  font-size: 1.1rem;
 }
 
 .info-item:last-child {
@@ -84,24 +88,25 @@ export default {
 }
 
 .info-item strong {
-  color: #4a5568;
-  font-weight: 600;
+  color: #555;
+  margin-right: 1rem;
 }
 
 .info-item span {
-  color: #718096;
+  color: #333;
 }
 
 .logout-btn {
+  width: 100%;
+  padding: 0.8rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
   background-color: #e53e3e;
-  color: white;
-  padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 0.5rem;
-  font-size: 1rem;
-  font-weight: 600;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: background-color 0.3s ease;
 }
 
 .logout-btn:hover {

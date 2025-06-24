@@ -1,13 +1,14 @@
 <template>
-  <div class="login-page">
+  <div class="register-page">
     <NavBar />
-    <div class="login-container">
-      <div class="login-card">
-        <div v-if="showVerificationMessage" class="verification-message">
-          注册成功！请检查您的邮箱以完成账户验证，然后即可登录。
-        </div>
-        <h2>{{ t('login.title') }}</h2>
-        <form @submit.prevent="handleLogin">
+    <div class="register-container">
+      <div class="register-card">
+        <h2>{{ t('register.title') }}</h2>
+        <form @submit.prevent="handleRegister">
+          <div class="input-group">
+            <label for="username">{{ t('register.username') }}</label>
+            <input type="text" id="username" v-model="username" required />
+          </div>
           <div class="input-group">
             <label for="email">{{ t('login.email') }}</label>
             <input type="email" id="email" v-model="email" required />
@@ -17,54 +18,48 @@
             <input type="password" id="password" v-model="password" required />
           </div>
           <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
-          <button type="submit" class="btn-login" :disabled="isLoading">
-            {{ isLoading ? '登录中...' : t('login.button_login') }}
+          <button type="submit" class="btn-register" :disabled="isLoading">
+            {{ isLoading ? '注册中...' : t('register.button_register') }}
           </button>
         </form>
-        <div class="register-prompt">
-          <p>{{ t('login.prompt_register') }} <router-link to="/register">{{ t('login.button_register_now') }}</router-link></p>
-        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
-import { useRouter, useRoute } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import NavBar from '../components/NavBar.vue';
 
+const username = ref('');
 const email = ref('');
 const password = ref('');
 const errorMessage = ref('');
 const isLoading = ref(false);
-const showVerificationMessage = ref(false);
 
 const authStore = useAuthStore();
 const router = useRouter();
-const route = useRoute();
 const { t } = useI18n();
 
-onMounted(() => {
-  if (route.query.from === 'register') {
-    showVerificationMessage.value = true;
+const handleRegister = async () => {
+  if (!username.value.trim()) {
+    errorMessage.value = '用户名不能为空';
+    return;
   }
-});
-
-const handleLogin = async () => {
   isLoading.value = true;
   errorMessage.value = '';
   try {
-    await authStore.login({
+    await authStore.register({
+      username: username.value,
       email: email.value,
       password: password.value,
     });
-    // 登录成功，立即跳转到工作台
-    router.push({ name: 'Dashboard' });
+    router.push({ name: 'Login', query: { from: 'register' } });
   } catch (error) {
-    errorMessage.value = error.message || '登录时发生未知错误';
+    errorMessage.value = error.message || '注册时发生未知错误';
   } finally {
     isLoading.value = false;
   }
@@ -72,19 +67,17 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-.login-page {
+.register-page {
   background-color: #f7fafc;
   min-height: 100vh;
 }
-
-.login-container {
+.register-container {
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 4rem 2rem;
 }
-
-.login-card {
+.register-card {
   width: 100%;
   max-width: 450px;
   background: white;
@@ -92,26 +85,22 @@ const handleLogin = async () => {
   border-radius: 1rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
-
-.login-card h2 {
+.register-card h2 {
   text-align: center;
   font-size: 2rem;
   font-weight: 600;
   margin-bottom: 2rem;
   color: #333;
 }
-
 .input-group {
   margin-bottom: 1.5rem;
 }
-
 .input-group label {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
   color: #555;
 }
-
 .input-group input {
   width: 100%;
   padding: 0.8rem 1rem;
@@ -119,14 +108,12 @@ const handleLogin = async () => {
   border-radius: 0.5rem;
   font-size: 1rem;
 }
-
 .error-message {
   color: #e53e3e;
   margin-bottom: 1rem;
   text-align: center;
 }
-
-.btn-login {
+.btn-register {
   width: 100%;
   padding: 0.8rem;
   font-size: 1.1rem;
@@ -138,32 +125,8 @@ const handleLogin = async () => {
   cursor: pointer;
   transition: opacity 0.3s ease;
 }
-
-.btn-login:disabled {
+.btn-register:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
-
-.register-prompt {
-  text-align: center;
-  margin-top: 1.5rem;
-  color: #555;
-}
-
-.register-prompt a {
-  color: #667eea;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.verification-message {
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-  background-color: #e6fffa;
-  color: #2c7a7b;
-  border-left: 4px solid #38b2ac;
-  border-radius: 0.25rem;
-  font-weight: 500;
-}
-</style>
-
+</style> 

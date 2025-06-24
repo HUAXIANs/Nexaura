@@ -23,6 +23,11 @@ class GeneratedContent(BaseModel):
     tags: List[str]
     image_descriptions: Optional[List[str]] = None
 
+class ContentResponse(BaseModel):
+    title: str
+    content: str
+    tags: List[str]
+
 # 改造这个函数，让它调用真实的讯飞API
 async def call_xunfei_api(topic: str, platform: str, style: str) -> GeneratedContent:
     """
@@ -37,14 +42,17 @@ async def call_xunfei_api(topic: str, platform: str, style: str) -> GeneratedCon
     # 改造Prompt，使用分隔符而不是要求返回JSON
     prompt = f"""
 请你扮演一位资深的小红书运营专家。
-你的任务是根据以下要求，为我创作一篇爆款小redbook文案。
+你的任务是根据以下要求，为我创作一篇爆款小红书图文笔记。
 
 【主题】: {topic}
 【风格】: {style}
 
 【要求】:
 1. 严格按照下面的格式和分隔符输出，不要添加任何额外的解释性文字。
-2. 各个部分之间使用 '---xxx---' 作为分隔符。
+2. 在正文部分, 请在适当的位置大量使用 emoji, 营造轻松、吸引人的氛围。
+3. 标题要吸引人, 包含关键词。
+4. 正文要分段, 段落之间用空行隔开, 逻辑清晰, 易于阅读。
+5. 在结尾处生成相关的 hashtag 标签, 增加笔记的曝光率。
 
 ---xxx---
 [TITLE]
@@ -53,11 +61,11 @@ async def call_xunfei_api(topic: str, platform: str, style: str) -> GeneratedCon
 ---xxx---
 [CONTENT]
 这里是生成的正文内容
-段落之间请用空行隔开
+(使用 emoji,多分段)
 
 ---xxx---
 [TAGS]
-这里是生成的标签, 每个标签用英文逗号分隔
+#标签1 #标签2 #标签3
 
 ---xxx---
 [IMAGES]
@@ -100,7 +108,8 @@ async def call_xunfei_api(topic: str, platform: str, style: str) -> GeneratedCon
             elif part.startswith('[TAGS'):
                 try:
                     tags_str = part.split('\n', 1)[1].strip()
-                    response_data['tags'] = [tag.strip() for tag in tags_str.split(',')]
+                    # Split by space and filter out empty strings
+                    response_data['tags'] = [tag.strip() for tag in tags_str.split(' ') if tag.strip()]
                 except IndexError:
                     pass
             elif part.startswith('[IMAGES'):
@@ -126,10 +135,10 @@ async def call_xunfei_api(topic: str, platform: str, style: str) -> GeneratedCon
         print(f"调用AI服务或解析内容时发生错误: {e}")
         raise HTTPException(status_code=500, detail=f"AI服务调用或解析失败: {str(e)}")
 
-@router.post("/generate", response_model=GeneratedContent)
+@router.post("/generate", response_model=ContentResponse)
 async def generate_content(
-    request: ContentRequest, 
-    current_user: dict = Depends(get_current_user)
+    request: ContentRequest,
+    current_user = Depends(get_current_user)
 ):
     """
     生成內容接口
@@ -154,9 +163,16 @@ async def generate_content(
                 detail="內容生成服務返回了空的結果"
             )
             
-        return generated_content
+        return ContentResponse(
+            title=generated_content.title,
+            content=generated_content.content,
+            tags=generated_content.tags
+        )
         
     except Exception as e:
+        # Reraise HTTPException directly to preserve status code and detail
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"內容生成失敗：{str(e)}"
